@@ -1,4 +1,4 @@
-```python
+
 import os
 import requests
 import streamlit as st
@@ -235,4 +235,3 @@ st.write(
 st.caption(
     "Built with Python • Streamlit • Generative AI • MusicGen"
 )
-```
