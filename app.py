@@ -131,16 +131,23 @@ def generate_music(prompt, token):
         api_key=token
     )
 
+    # Check whether the deployed Hugging Face library
+    # supports text-to-audio
+    if not hasattr(client, "text_to_audio"):
+        raise RuntimeError(
+            "The deployed Hugging Face library does not support "
+            "text_to_audio(). Please reboot the Streamlit app "
+            "after updating requirements.txt."
+        )
+
     result = client.text_to_audio(
         prompt,
         model="facebook/musicgen-small"
     )
 
-    # Get generated audio and sampling rate
     audio = result.audio
     sampling_rate = result.sampling_rate
 
-    # Convert generated audio to WAV bytes
     buffer = io.BytesIO()
 
     sf.write(
@@ -153,8 +160,6 @@ def generate_music(prompt, token):
     buffer.seek(0)
 
     return buffer.read()
-
-   
 
 # ---------------------------------------------------------
 # Generate Button
