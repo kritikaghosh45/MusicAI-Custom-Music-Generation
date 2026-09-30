@@ -127,13 +127,18 @@ st.info(
 def generate_music(prompt, token):
 
     client = InferenceClient(
+        provider="hf-inference",
         api_key=token
     )
 
-    audio = client.text_to_audio(
-        prompt=prompt,
+    result = client.text_to_audio(
+        prompt,
         model="facebook/musicgen-small"
     )
+
+    # Get generated audio and sampling rate
+    audio = result.audio
+    sampling_rate = result.sampling_rate
 
     # Convert generated audio to WAV bytes
     buffer = io.BytesIO()
@@ -141,7 +146,7 @@ def generate_music(prompt, token):
     sf.write(
         buffer,
         np.asarray(audio),
-        32000,
+        int(sampling_rate),
         format="WAV"
     )
 
@@ -149,6 +154,7 @@ def generate_music(prompt, token):
 
     return buffer.read()
 
+   
 
 # ---------------------------------------------------------
 # Generate Button
