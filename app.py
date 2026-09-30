@@ -1,35 +1,60 @@
-
 import os
-import requests
+import io
+import numpy as np
+import soundfile as sf
 import streamlit as st
+from huggingface_hub import InferenceClient
+
 
 # ---------------------------------------------------------
 # Page Configuration
 # ---------------------------------------------------------
+
 st.set_page_config(
     page_title="MusicAI - Custom Music Generation",
     page_icon="🎵",
     layout="centered"
 )
 
+
 # ---------------------------------------------------------
 # Title
 # ---------------------------------------------------------
+
 st.title("🎵 MusicAI: Custom Music Generation")
+
 st.write(
     "Create personalized instrumental music using Generative AI. "
     "Choose your mood, genre, tempo, and instruments."
 )
 
+
 # ---------------------------------------------------------
-# Hugging Face Model
+# Hugging Face Token
 # ---------------------------------------------------------
-HF_URL = "https://api-inference.huggingface.co/models/facebook/musicgen-small"
+
+def get_hf_token():
+
+    # Streamlit Cloud Secrets
+    try:
+        token = st.secrets["HF_TOKEN"]
+
+        if token:
+            return token
+
+    except Exception:
+        pass
+
+    # Local environment variable
+    return os.getenv("HF_TOKEN")
+
 
 # ---------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------
+
 with st.sidebar:
+
     st.header("🎛️ Music Settings")
 
     genre = st.selectbox(
@@ -72,9 +97,11 @@ with st.sidebar:
         "piano, soft drums"
     )
 
+
 # ---------------------------------------------------------
-# Prompt
+# Music Prompt
 # ---------------------------------------------------------
+
 default_prompt = (
     f"A {mood.lower()} {genre.lower()} instrumental track "
     f"with {instruments}, {tempo.lower()} tempo"
@@ -86,67 +113,47 @@ prompt = st.text_area(
     height=100
 )
 
+
 st.info(
     "Example: Calm cinematic piano music with soft strings "
     "for studying and relaxation."
 )
 
-# ---------------------------------------------------------
-# Get Hugging Face Token
-# ---------------------------------------------------------
-def get_hf_token():
-
-    # Streamlit Cloud Secrets
-    try:
-        token = st.secrets["HF_TOKEN"]
-
-        if token:
-            return token
-
-    except Exception:
-        pass
-
-    # Local environment variable
-    token = os.getenv("HF_TOKEN")
-
-    return token
-
 
 # ---------------------------------------------------------
 # Generate Music
 # ---------------------------------------------------------
+
 def generate_music(prompt, token):
 
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-
-    response = requests.post(
-        HF_URL,
-        headers=headers,
-        json={
-            "inputs": prompt
-        },
-        timeout=180
+    client = InferenceClient(
+        api_key=token
     )
 
-    if response.status_code != 200:
+    audio = client.text_to_audio(
+        prompt=prompt,
+        model="facebook/musicgen-small"
+    )
 
-        try:
-            error_message = response.json()
-        except Exception:
-            error_message = response.text
+    # Convert generated audio to WAV bytes
+    buffer = io.BytesIO()
 
-        raise RuntimeError(
-            f"Music generation failed.\n\n{error_message}"
-        )
+    sf.write(
+        buffer,
+        np.asarray(audio),
+        32000,
+        format="WAV"
+    )
 
-    return response.content
+    buffer.seek(0)
+
+    return buffer.read()
 
 
 # ---------------------------------------------------------
 # Generate Button
 # ---------------------------------------------------------
+
 if st.button(
     "🎵 Generate Music",
     type="primary",
@@ -185,13 +192,11 @@ if st.button(
                     "✅ Music generated successfully!"
                 )
 
-                # Audio player
                 st.audio(
                     audio_bytes,
                     format="audio/wav"
                 )
 
-                # Download button
                 st.download_button(
                     label="⬇️ Download Music",
                     data=audio_bytes,
@@ -203,13 +208,14 @@ if st.button(
             except Exception as e:
 
                 st.error(
-                    f"Something went wrong:\n\n{e}"
+                    f"Music generation failed:\n\n{e}"
                 )
 
 
 # ---------------------------------------------------------
-# Project Information
+# About Project
 # ---------------------------------------------------------
+
 st.divider()
 
 st.subheader("🤖 About MusicAI")
@@ -221,14 +227,14 @@ st.write(
     music.
 
     Users can customize:
-    
+
     - 🎵 Genre
     - 😊 Mood
     - ⚡ Tempo
     - 🎹 Instruments
-    
+
     The application uses Meta's **MusicGen** model through
-    the Hugging Face Inference API.
+    Hugging Face Inference Providers.
     """
 )
 
